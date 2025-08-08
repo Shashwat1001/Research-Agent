@@ -1,5 +1,5 @@
 from typing import Dict, List, Any
-import json, os
+import json
 from .utils import getenv_str, log
 from openai import OpenAI
 
@@ -36,13 +36,10 @@ Return JSON: {{"queries": ["...", "..."]}}"""
         return [q for q in queries if isinstance(q, str) and q.strip()]
     except Exception as e:
         log(f"[plan_queries] parse error: {e}; raw: {out}")
-        # fallback
         return [question]
 
 def synthesize_answer(question: str, sources: List[dict], model: str) -> Dict[str, Any]:
-    """sources: list of {'id','url','snippet'}"""
     system = "You write concise, neutral, well-cited syntheses using only provided sources."
-    # Build sources text
     src_lines = []
     for s in sources:
         sid = s.get("id"); url = s.get("url"); snip = s.get("snippet","")[:1200]

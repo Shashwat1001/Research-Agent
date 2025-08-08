@@ -1,4 +1,4 @@
-import os, requests
+import requests
 from typing import List, Dict
 from .utils import getenv_str, log, sha1, load_cache, save_cache
 

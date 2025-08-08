@@ -7,10 +7,9 @@ def cli():
     p.add_argument("--max-iters", type=int, default=int(os.getenv("MAX_ITERS", "2")))
     p.add_argument("--topk", type=int, default=int(os.getenv("TOPK", "6")))
     p.add_argument("--model", type=str, default=os.getenv("DEFAULT_LLM", "openai:gpt-4o-mini"))
-    p.add_argument("--safe-mode", action="store_true", help="Skip fetching pages; synthesize from search snippets only")
+    p.add_argument("--safe-mode", action="store_true", help="Skip fetching pages; use search snippets only")
     args = p.parse_args()
 
-    # Model name normalization: allow "openai:gpt-4o-mini" or just "gpt-4o-mini"
     model = args.model.split(":", 1)[-1]
 
     result = answer(

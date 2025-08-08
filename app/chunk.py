@@ -7,7 +7,7 @@ def normalize(text: str) -> str:
     text = re.sub(r"\s+", " ", text).strip()
     return text
 
-def chunk_text(text: str, chunk_size: int = 1200, overlap: int = 150) -> List[str]:
+def chunk_text(text: str, chunk_size: int = 900, overlap: int = 120) -> List[str]:
     text = normalize(text)
     if not text:
         return []
@@ -24,7 +24,6 @@ def chunk_text(text: str, chunk_size: int = 1200, overlap: int = 150) -> List[st
 def rank_chunks(chunks: List[str], query: str, topn: int = 6) -> List[Tuple[str, float]]:
     if not chunks:
         return []
-    # simple tokenization
     corpus = [c.split() for c in chunks]
     bm25 = BM25Okapi(corpus)
     scores = bm25.get_scores(query.split())

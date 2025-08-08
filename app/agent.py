@@ -18,17 +18,12 @@ def answer(
     model: str = "gpt-4o-mini",
     safe_mode: bool = None,
 ) -> Dict:
-    """
-    safe_mode=True -> DO NOT fetch pages; synthesize from search snippets only (very low RAM).
-    Default is read from env SAFE_MODE (1/0), falls back to False.
-    """
     if safe_mode is None:
         safe_mode = os.getenv("SAFE_MODE", "0") == "1"
 
     log(f"Question: {question}")
     queries = plan_queries(question, model=model)
 
-    # keep only small # of queries in case planner returns many
     if len(queries) > 6:
         queries = queries[:6]
 
@@ -37,35 +32,29 @@ def answer(
     for it in range(max_iters):
         log(f"--- Iteration {it+1}/{max_iters} ---")
 
-        # 1) Search
         results = []
         for q in queries:
             results.extend(search_web(q, k=topk))
 
-        # 2) Deduplicate & skip PDFs
         results = dedupe_by(results, key="url")
         results = [r for r in results if not _is_pdf(r.get("url", ""))]
         results = dedupe_by_domain(results, key="url")
 
         if safe_mode:
-            # 3A) SAFE MODE: don't fetch pages; just use search snippets
-            #    Build a pseudo "chunk list" from SERP snippets (very low memory)
-            for i, r in enumerate(results[:10], start=1):
+            for r in results[:10]:
                 snippet = (r.get("snippet") or "")[:1000]
                 if not snippet:
                     continue
                 known_chunks.append({
                     "chunk": snippet,
                     "url": r["url"],
-                    "score": 1.0,                 # flat score is OK for snippets
+                    "score": 1.0,
                     "title": r.get("title") or r["url"]
                 })
-
         else:
-            # 3B) NORMAL MODE: fetch & extract, but guarded
             pages_seen = 0
             for r in results:
-                if pages_seen >= 8:      # hard cap to avoid memory spikes
+                if pages_seen >= 8:
                     break
                 url = r["url"]
                 try:
@@ -80,17 +69,13 @@ def answer(
                     continue
 
                 chunks = chunk_text(text, chunk_size=900, overlap=120)
-                # rank and keep only top 2 chunks per page (reduce RAM)
                 scored = rank_chunks(chunks, question, topn=2)
                 for chunk, score in scored:
                     known_chunks.append({"chunk": chunk, "url": url, "score": float(score), "title": title})
                 pages_seen += 1
 
-        # Keep top 24 across everything
         known_chunks = sorted(known_chunks, key=lambda x: x["score"], reverse=True)[:24]
 
-        # Build compact sources (ensure diversity)
-        # When safe_mode=True, this will use SERP snippets as "sources"
         raw = [{"chunk": c["chunk"], "url": c["url"], "score": c["score"], "title": c["title"]} for c in known_chunks]
         sources = build_source_snippets(raw, max_sources=8)
 
@@ -106,8 +91,8 @@ def answer(
                 "gaps": critique.get("gaps", []),
             }
 
-        # Re-plan based on gaps
         gap_text = " | ".join(critique.get("gaps", [])) or "Expand on counterpoints and recency"
-        queries = plan_queries(f"{question}\nFocus on: {gap_text}", model=model)
+        from .llm import plan_queries as _plan
+        queries = _plan(f"{question}\nFocus on: {gap_text}", model=model)
 
     return {"answer": "Unable to reach high confidence.", "citations": [], "confidence": 0.5, "gaps": []}
