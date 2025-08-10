@@ -6,3 +6,5 @@ python-dotenv>=1.0.1
 tiktoken>=0.7.0
 tenacity>=8.5.0
 streamlit>=1.36.0
+scikit-learn>=1.5.0
+

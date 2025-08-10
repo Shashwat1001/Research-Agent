@@ -9,6 +9,16 @@ def _client():
         raise RuntimeError("OPENAI_API_KEY not set")
     return OpenAI(api_key=api_key)
 
+def embed_texts(texts: list[str], model: str = "text-embedding-3-small") -> list[list[float]]:
+    """
+    Returns a list of embedding vectors (one per text).
+    Uses OpenAI's text-embedding-3-small for low cost.
+    """
+    client = _client()
+    resp = client.embeddings.create(model=model, input=texts)
+    return [d.embedding for d in resp.data]
+
+
 def _chat(model: str, system: str, user: str, response_format: str = "json_object", temperature: float = 0.2) -> str:
     client = _client()
     resp = client.chat.completions.create(
